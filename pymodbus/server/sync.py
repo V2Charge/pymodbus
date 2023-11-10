@@ -8,7 +8,7 @@ import serial
 import socket
 import ssl
 import traceback
-
+import time
 from pymodbus.constants import Defaults
 from pymodbus.utilities import hexlify_packets
 from pymodbus.factory import ServerDecoder
@@ -19,6 +19,16 @@ from pymodbus.transaction import *
 from pymodbus.exceptions import NotImplementedException, NoSuchSlaveException
 from pymodbus.pdu import ModbusExceptions as merror
 from pymodbus.compat import socketserver, byte2int
+
+# CUSTOM MODIFICATION
+from RPi import GPIO
+
+RS485_DE_RE=16
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup(RS485_DE_RE, GPIO.OUT)
+GPIO.output(RS485_DE_RE, GPIO.LOW)
+# END OF CUSTOM MODIFICATION
 
 # --------------------------------------------------------------------------- #
 # Logging
@@ -142,7 +152,15 @@ class ModbusSingleRequestHandler(ModbusBaseRequestHandler):
             pdu = self.framer.buildPacket(message)
             if _logger.isEnabledFor(logging.DEBUG):
                 _logger.debug('send: [%s]- %s' % (message, b2a_hex(pdu)))
-            return self.request.send(pdu)
+
+            # CUSTOM MODIFICATION
+            GPIO.output(RS485_DE_RE, GPIO.HIGH)
+            size = self.request.send(pdu)
+            time.sleep(0.0011 * size)
+            GPIO.output(RS485_DE_RE, GPIO.LOW)
+            # END OF CUSTOM MODIFICATION
+
+            return size
 
 
 class CustomSingleRequestHandler(ModbusSingleRequestHandler):
